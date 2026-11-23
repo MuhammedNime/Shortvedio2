@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --page: #e9e4d8;
+    --panel: #fffaf0;
+    --surface: #f4ebd6;
+    --ptxt: #2a2113;
+    --pmuted: #6c5938;
+    --pline: #d9c9a3;
+    --sand: #edd6a2;
+    --gold: #b88924;
+    --ok: #00b050;
+    font-family: 'Cairo', 'Tajawal', system-ui, sans-serif;
+  }
+
+  .dark {
+    --page: #0c0c0c;
+    --panel: #221c12;
+    --surface: #17130c;
+    --ptxt: #f4ead2;
+    --pmuted: #b8a684;
+    --pline: #5a4a2a;
+    --sand: #edd6a2;
+    --gold: #d4a73a;
+    --ok: #00b050;
+  }
+
+  body {
+    background-color: var(--page);
+    color: var(--ptxt);
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Cairo', 'Tajawal', system-ui, sans-serif;
+  }
+
+  .font-mono-nums {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom subtle scrollbars for studio panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 167, 58, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 167, 58, 0.45);
+}
+
+/* Range sliders accented in channel emerald green & comfortable on touch */
+input[type='range'] {
+  accent-color: #00b050;
+  cursor: pointer;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Keep MathLive virtual keyboard above studio modals & drawers */
+.ML__keyboard {
+  z-index: 90 !important;
+}
+
+
