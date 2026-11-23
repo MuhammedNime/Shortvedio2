@@ -336,11 +336,18 @@ export interface PresetBackdropInfo {
   swatchColor: string;
 }
 
+function withBasePath(relPath: string): string {
+  const base =
+    (import.meta as unknown as { env?: { BASE_URL?: string } })?.env?.BASE_URL || '/';
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+  return `${normalizedBase}${relPath.replace(/^\/+/, '')}`;
+}
+
 export const PRESET_BACKDROPS: PresetBackdropInfo[] = [
   {
     id: 'channelSand',
     label: 'قالب القناة الرملي',
-    src: '/src/assets/images/template_channel_sand.jpg',
+    src: withBasePath('src/assets/images/template_channel_sand.jpg'),
     swatchColor: '#EDD6A2',
   },
   {
@@ -362,8 +369,8 @@ export const PRESET_BACKDROPS: PresetBackdropInfo[] = [
   {
     id: 'channelMath',
     label: 'سبورة الرياضيات 🧮',
-    src: '/src/assets/images/math_board_vertical_1795360665242.jpg',
-    wideSrc: '/src/assets/images/math_board_wide_1795360665477.jpg',
+    src: withBasePath('src/assets/images/math_board_vertical_1795360665242.jpg'),
+    wideSrc: withBasePath('src/assets/images/math_board_wide_1795360665477.jpg'),
     swatchColor: '#113328',
   },
   {
@@ -457,19 +464,19 @@ export const PRESET_BACKDROPS: PresetBackdropInfo[] = [
   {
     id: 'emerald',
     label: 'الزمرد الذهبي',
-    src: '/src/assets/images/template_emerald_studio_1795289851480.jpg',
+    src: withBasePath('src/assets/images/template_emerald_studio_1795289851480.jpg'),
     swatchColor: '#10b981',
   },
   {
     id: 'navy',
     label: 'الأزرق الليلي',
-    src: '/src/assets/images/template_navy_classic_1795289852308.jpg',
+    src: withBasePath('src/assets/images/template_navy_classic_1795289852308.jpg'),
     swatchColor: '#1e3a8a',
   },
   {
     id: 'obsidian',
     label: 'البرونز الداكن',
-    src: '/src/assets/images/template_warm_obsidian_1795289851537.jpg',
+    src: withBasePath('src/assets/images/template_warm_obsidian_1795289851537.jpg'),
     swatchColor: '#78350f',
   },
 ];

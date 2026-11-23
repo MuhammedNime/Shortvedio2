@@ -26,8 +26,13 @@ export class AiApiError extends Error {
 
 const ENV_MAP = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
 const BUILD_API_BASE = (ENV_MAP.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
-const EMBEDDED_APK_GEMINI_KEYS = (() => {
-  const combined = [ENV_MAP.VITE_GEMINI_API_KEY || '', ENV_MAP.VITE_GEMINI_API_KEYS || ''].join('\n');
+const EMBEDDED_CLIENT_GEMINI_KEYS = (() => {
+  const numberedKeys = Array.from({ length: 10 }, (_, idx) => ENV_MAP[`VITE_GEMINI_API_KEY_${idx + 1}`] || '');
+  const combined = [
+    ENV_MAP.VITE_GEMINI_API_KEY || '',
+    ENV_MAP.VITE_GEMINI_API_KEYS || '',
+    ...numberedKeys,
+  ].join('\n');
   const seen = new Set<string>();
   const list: string[] = [];
   for (const part of combined.split(/[\s,;]+/)) {
@@ -85,19 +90,19 @@ function getNextUtcResetMs(): number {
 }
 
 async function runApkGeminiWithRotation<T>(apiTask: (apiKey: string) => Promise<T>): Promise<T> {
-  if (EMBEDDED_APK_GEMINI_KEYS.length === 0) {
+  if (EMBEDDED_CLIENT_GEMINI_KEYS.length === 0) {
     throw new AiApiError(
-      'مفتاح Gemini API غير مدمج في التطبيق.',
+      'مفاتيح Gemini API غير مضبوطة في GitHub Secrets. أضف GEMINI_API_KEY أو GEMINI_API_KEYS (أو GEMINI_API_KEY_1..5) ثم أعد تشغيل البناء.',
       0,
       false
     );
   }
   const now = Date.now();
   const cooldowns = getApkKeyCooldowns();
-  const healthy = EMBEDDED_APK_GEMINI_KEYS.filter(
+  const healthy = EMBEDDED_CLIENT_GEMINI_KEYS.filter(
     (k) => (cooldowns[k.slice(-8)] ?? 0) <= now
   );
-  const candidates = healthy.length > 0 ? healthy : EMBEDDED_APK_GEMINI_KEYS;
+  const candidates = healthy.length > 0 ? healthy : EMBEDDED_CLIENT_GEMINI_KEYS;
 
   let lastErr: unknown;
   for (const key of candidates) {
@@ -140,6 +145,12 @@ export function isNativeApkRuntime(): boolean {
     AndroidNativeBridge?: unknown;
   };
   return Boolean(w.Capacitor?.isNativePlatform?.() || w.AndroidNativeBridge);
+}
+
+function isStaticPagesRuntime(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  return host.endsWith('.github.io') || host === 'github.io';
 }
 
 function normalizeLatexToSpokenArabic(text: string): string {
@@ -193,15 +204,19 @@ function formatGeminiClientError(err: unknown): AiApiError {
     raw.includes('API key not valid')
   ) {
     return new AiApiError(
-      'مفتاح Gemini API المدمج في التطبيق غير صالح أو مرفوض (403).',
+      'مفتاح Gemini API المضاف في GitHub Secrets غير صالح أو مرفوض (403). تأكد من صحة المفتاح وقيود النطاق.',
       403,
       false
     );
   }
   if (raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')) {
     if (isDailyQuota) {
+      const keyNote =
+        EMBEDDED_CLIENT_GEMINI_KEYS.length > 1
+          ? `على جميع المفاتيح المضافة (${EMBEDDED_CLIENT_GEMINI_KEYS.length} مفاتيح)`
+          : 'على الباقة المجانية';
       return new AiApiError(
-        'اكتملت الحصة اليومية المجانية لتوليد الصوت (10 طلبات يومياً على الباقة المجانية).',
+        `اكتملت الحصة اليومية لتوليد الصوت ${keyNote}. يمكنك إضافة مفاتيح إضافية في GitHub Secrets باسم GEMINI_API_KEYS أو GEMINI_API_KEY_1..10.`,
         429,
         true
       );
@@ -479,8 +494,15 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
   } catch {
     if (res.status === 403) {
       throw new AiApiError(
-        'تم رفض الاتصال بالخادم (خطأ 403). تأكد من فتح التطبيق من داخل AI Studio وتحديث الصفحة، أو مراجعة مفتاح API في Settings > Secrets.',
+        'تم رفض الاتصال بالخادم (خطأ 403). تأكد من تحديث الصفحة، أو مراجعة مفاتيح Gemini في Settings > Secrets.',
         403,
+        false
+      );
+    }
+    if (res.status === 404 || res.status === 405) {
+      throw new AiApiError(
+        'لا يوجد خادم خلفي على هذا الرابط. أضف مفاتيح Gemini في GitHub (Settings > Secrets and variables > Actions) ثم أعد تشغيل النشر.',
+        res.status,
         false
       );
     }
@@ -497,9 +519,9 @@ function buildApiUrl(path: string): string {
 }
 
 async function fetchAi(path: string, payload: unknown): Promise<Response> {
-  if (isNativeApkRuntime() && !BUILD_API_BASE) {
+  if ((isNativeApkRuntime() || isStaticPagesRuntime()) && !BUILD_API_BASE) {
     throw new AiApiError(
-      'ميزة الذكاء الاصطناعي داخل الـ APK تحتاج إضافة سر GEMINI_API_KEY في GitHub (Settings > Secrets and variables > Actions) قبل بناء الـ APK.',
+      'لتشغيل الذكاء الاصطناعي على GitHub Pages أو APK، أضف GEMINI_API_KEY أو GEMINI_API_KEYS (أو GEMINI_API_KEY_1..10) في GitHub (Settings > Secrets and variables > Actions) ثم أعد تشغيل البناء.',
       0,
       false
     );
@@ -526,7 +548,7 @@ export async function generateAiQuizSlides(
   difficulty: string,
   contentType: 'general' | 'math' | 'trueFalse' = 'general'
 ): Promise<QuestionSlide[]> {
-  if (isNativeApkRuntime() && EMBEDDED_APK_GEMINI_KEYS.length > 0 && !BUILD_API_BASE) {
+  if (EMBEDDED_CLIENT_GEMINI_KEYS.length > 0 && !BUILD_API_BASE) {
     return generateQuizDirectlyInApk(topic, count, difficulty, contentType);
   }
 
@@ -568,7 +590,7 @@ export async function generateTtsClip(
   fileName: string,
   style?: string
 ): Promise<SlideAudioClip> {
-  if (isNativeApkRuntime() && EMBEDDED_APK_GEMINI_KEYS.length > 0 && !BUILD_API_BASE) {
+  if (EMBEDDED_CLIENT_GEMINI_KEYS.length > 0 && !BUILD_API_BASE) {
     return generateTtsDirectlyInApk(text, voiceName, fileName, style);
   }
 

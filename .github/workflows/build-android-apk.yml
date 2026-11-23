@@ -1,0 +1,67 @@
+name: Build Debug APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build web bundle
+        env:
+          VITE_BASE_PATH: "/"
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          VITE_GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
+          VITE_GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
+          VITE_GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
+          VITE_GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
+          VITE_GEMINI_API_KEY_5: ${{ secrets.GEMINI_API_KEY_5 }}
+          VITE_GEMINI_API_KEY_6: ${{ secrets.GEMINI_API_KEY_6 }}
+          VITE_GEMINI_API_KEY_7: ${{ secrets.GEMINI_API_KEY_7 }}
+          VITE_GEMINI_API_KEY_8: ${{ secrets.GEMINI_API_KEY_8 }}
+          VITE_GEMINI_API_KEY_9: ${{ secrets.GEMINI_API_KEY_9 }}
+          VITE_GEMINI_API_KEY_10: ${{ secrets.GEMINI_API_KEY_10 }}
+        run: npm run build
+
+      - name: Sync Capacitor Android project
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorts-quiz-studio-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

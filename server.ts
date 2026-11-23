@@ -10,7 +10,12 @@ const PORT = 3000;
 const serverKeyCooldowns = new Map<string, number>();
 
 function getConfiguredServerKeys(): string[] {
-  const combined = [process.env.GEMINI_API_KEY || '', process.env.GEMINI_API_KEYS || ''].join('\n');
+  const numbered = Array.from({ length: 10 }, (_, idx) => process.env[`GEMINI_API_KEY_${idx + 1}`] || '');
+  const combined = [
+    process.env.GEMINI_API_KEY || '',
+    process.env.GEMINI_API_KEYS || '',
+    ...numbered,
+  ].join('\n');
   const seen = new Set<string>();
   const keys: string[] = [];
   for (const part of combined.split(/[\s,;]+/)) {

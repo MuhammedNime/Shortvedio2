@@ -63,8 +63,9 @@ export const MathFieldInput: React.FC<MathFieldInputProps> = ({
     let active = true;
     void import('mathlive').then((mod) => {
       if (mod.MathfieldElement) {
-        mod.MathfieldElement.fontsDirectory = '/mathlive/fonts';
-        mod.MathfieldElement.soundsDirectory = '/mathlive/sounds';
+        const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
+        mod.MathfieldElement.fontsDirectory = `${baseUrl}mathlive/fonts`;
+        mod.MathfieldElement.soundsDirectory = `${baseUrl}mathlive/sounds`;
       }
       if (active) setReady(true);
     });

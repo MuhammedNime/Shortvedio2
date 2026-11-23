@@ -6,7 +6,14 @@ import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const rawBase = (process.env.VITE_BASE_PATH || '/').trim();
+  const basePath =
+    rawBase === '/' || rawBase === ''
+      ? '/'
+      : `/${rawBase.replace(/^\/+|\/+$/g, '')}/`;
+
   return {
+    base: basePath,
     plugins: [
       react(),
       tailwindcss(),
@@ -14,7 +21,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
-          id: '/',
+          id: basePath,
           name: 'استوديو شورتس الأسئلة',
           short_name: 'شورتس كويز',
           description: 'استوديو صناعة وتصدير فيديوهات يوتيوب شورتس للأسئلة والخيارات الأربعة.',
@@ -24,23 +31,23 @@ export default defineConfig(() => {
           orientation: 'portrait',
           dir: 'rtl',
           lang: 'ar',
-          start_url: '/',
-          scope: '/',
+          start_url: basePath,
+          scope: basePath,
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: `${basePath}pwa-192x192.png`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: `${basePath}pwa-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: `${basePath}pwa-maskable-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -86,9 +93,8 @@ export default defineConfig(() => {
           type: 'module',
         },
       }),
-      // Copies src/assets into dist/ so root-relative URLs like
-      // "/src/assets/images/..." (e.g. generate_image output) still resolve
-      // in production builds. Do not remove.
+      // Copies src/assets into dist/ so backdrop paths resolve in production builds,
+      // and writes .nojekyll + 404.html for static hosts like GitHub Pages.
       {
         name: 'copy-unbundled-src-assets',
         apply: 'build',
@@ -101,6 +107,14 @@ export default defineConfig(() => {
           const distAssets = path.resolve(distDir, 'src/assets');
           if (fs.existsSync(distDir) && fs.existsSync(srcAssets)) {
             fs.cpSync(srcAssets, distAssets, {recursive: true, force: true});
+          }
+          if (fs.existsSync(distDir)) {
+            fs.writeFileSync(path.join(distDir, '.nojekyll'), '');
+            const indexHtml = path.join(distDir, 'index.html');
+            const fallbackHtml = path.join(distDir, '404.html');
+            if (fs.existsSync(indexHtml)) {
+              fs.copyFileSync(indexHtml, fallbackHtml);
+            }
           }
         },
       },
